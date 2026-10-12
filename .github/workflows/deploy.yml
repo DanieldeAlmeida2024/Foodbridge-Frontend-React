@@ -1,0 +1,106 @@
+
+name: Deploy Frontend FoodBridge
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-producao
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Baixar codigo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Gerar build
+        run: npm run build
+
+      - name: Empacotar frontend
+        run: tar -czf frontend.tar.gz -C dist .
+
+      - name: Configurar SSH
+        env:
+          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+
+      - name: Enviar build para Oracle Cloud
+        env:
+          VM_HOST: ${{ vars.VM_HOST }}
+          VM_USER: ${{ vars.VM_USER }}
+        run: |
+          scp -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/deploy_key \
+            frontend.tar.gz \
+            "${VM_USER}@${VM_HOST}:/tmp/foodbridge-frontend-${GITHUB_SHA}.tar.gz"
+
+      - name: Publicar no Nginx
+        env:
+          VM_HOST: ${{ vars.VM_HOST }}
+          VM_USER: ${{ vars.VM_USER }}
+        run: |
+          ssh -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/deploy_key \
+            "${VM_USER}@${VM_HOST}" \
+            "bash -se -- '${GITHUB_SHA}'" <<'REMOTE'
+          set -euo pipefail
+
+          SHA="$1"
+          BASE="/opt/foodbridge/foodbridge-frontend/foodbridge-frontend"
+          TARGET="$BASE/dist"
+          ARCHIVE="/tmp/foodbridge-frontend-${SHA}.tar.gz"
+          BACKUP="$BASE/backups/github-actions-${SHA}"
+          STAGE="$(mktemp -d "$BASE/.dist-next.XXXXXXXX")"
+
+          mkdir -p "$BASE/backups"
+          tar -xzf "$ARCHIVE" -C "$STAGE"
+          test -s "$STAGE/index.html"
+
+          sudo restorecon -RF "$STAGE"
+
+          if [ -d "$TARGET" ]; then
+            mv "$TARGET" "$BACKUP"
+          fi
+
+          if ! mv "$STAGE" "$TARGET"; then
+            if [ -d "$BACKUP" ]; then
+              mv "$BACKUP" "$TARGET"
+            fi
+            exit 1
+          fi
+
+          sudo restorecon -RF "$TARGET"
+          sudo nginx -t
+          rm -f "$ARCHIVE"
+
+          echo "Frontend publicado: $SHA"
+          REMOTE
+
+      - name: Confirmar deployment
+        run: echo "Deploy frontend concluido no commit ${GITHUB_SHA}"
