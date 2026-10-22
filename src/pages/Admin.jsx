@@ -1,12 +1,15 @@
 import { useEffect, useState } from "react";
 import api from "../api/client";
 import AppShell from "../components/layout/AppShell";
+import ImpactSummary from "../components/dashboard/ImpactSummary";
+import usePublicDashboard from "../hooks/usePublicDashboard";
 
 function message(err) {
   return err?.response?.data?.error || err?.response?.data?.mensagem || err?.message || "Erro ao processar";
 }
 
 export default function Admin() {
+  const platform = usePublicDashboard();
   const [tab, setTab] = useState("organizacoes");
   const [visualQuery, setVisualQuery] = useState("");
   const [organizations, setOrganizations] = useState([]);
@@ -39,6 +42,7 @@ export default function Admin() {
       await api.patch(`/admin/${kind}/${id}/${action}`);
       setNotice(action === "aprovar" ? "Registro aprovado." : "Registro reprovado.");
       await load();
+      platform.refresh();
     } catch (err) {
       setError(message(err));
     }
@@ -49,6 +53,7 @@ export default function Admin() {
 
   return (
     <AppShell title="Administração" subtitle="Revise os cadastros de organizações e usuários que aguardam verificação.">
+      <ImpactSummary data={platform.data?.impacto} loading={platform.loading} error={platform.error} onRetry={platform.refresh} title="Impacto total da plataforma" subtitle="Resultado consolidado de todas as organizações da rede FoodBridge." />
       <div className="fb-toolbar"><label className="fb-search"><input aria-label="Buscar cadastros" placeholder="Buscar nome, e-mail ou CNPJ" value={visualQuery} onChange={e => setVisualQuery(e.target.value)}/></label><span className="fb-results-count">{rows.length} cadastros pendentes</span></div>
       {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
       {notice && <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</div>}
