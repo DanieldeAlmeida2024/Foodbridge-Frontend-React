@@ -1,3 +1,38 @@
+# Foodbridge-Frontend-React
+
+Aplicação web da plataforma FoodBridge, incluindo cadastro, autenticação e organização das doações.
+
+## Início rápido
+**Stack:** React, Vite, TypeScript, JavaScript. Os passos abaixo dependem da configuração apropriada do ambiente e de serviços externos.
+
+```bash
+npm ci && npm run dev
+```
+
+**Verificação inicial:** `npm run build`. Não interpretar esse comando como evidência de testes aprovados antes de executá-lo.
+
+## Principais diretórios/arquivos
+- `package.json`
+- `src/pages`
+- `src/context`
+- `src/api`
+- `API_DOCUMENTATION.md`
+- `.github/workflows/deploy.yml`
+
+## Limitações
+A implantação Oracle Cloud exige secrets e infraestrutura; os dois deploys observados em outubro de 2026 falharam. O motivo não foi identificado apenas pela conclusão dos runs.
+
+## Documentação técnica
+- [Requisitos](docs/REQUISITOS.md)
+- [Arquitetura](docs/ARQUITETURA.md)
+- [UML](docs/UML.puml)
+- [Plano de testes](docs/PLANO_TESTES.md)
+- [Guia para IA](AGENTS.md)
+
+---
+
+## README anterior preservado
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
