@@ -1,0 +1,17 @@
+@startuml
+actor Usuario
+participant "Login" as Login
+participant "AuthContext" as Auth
+database localStorage as LS
+participant "Axios client" as Axios
+participant "API Kotlin" as API
+Usuario -> Login : credenciais
+Login -> API : POST /auth/login
+API --> Login : TEMP e lista de organizações
+Login -> Auth : loginTemp(data)
+Auth -> LS : set tempToken
+Usuario -> Auth : selecionar organização
+Auth -> LS : set token / remover TEMP
+Axios -> LS : read token ou tempToken
+Axios -> API : Authorization Bearer ...
+@enduml

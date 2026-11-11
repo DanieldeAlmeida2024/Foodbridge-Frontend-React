@@ -1,0 +1,17 @@
+@startuml
+actor Visitante
+component "AppRoutes / React Router" as Router
+component "Landing / Register / Login" as Publico
+component "SelectOrganization / OrganizationForm" as Selecao
+component "Dashboard / Donations / Requests" as Operacao
+component "Volunteers / Admin" as Restritas
+Visitante --> Router
+Router --> Publico
+Router --> Selecao
+Router --> Operacao
+Router --> Restritas
+note right of Restritas
+O módulo AppRoutes não contém
+guarda explícita; verificar cada componente.
+end note
+@enduml
