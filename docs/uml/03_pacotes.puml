@@ -1,0 +1,15 @@
+@startuml
+component "src/App.tsx" as App
+component "src/routes/AppRoutes.jsx" as Routes
+component "src/pages/*" as Pages
+component "src/context/AuthContext.tsx" as Auth
+component "src/api/client.js" as API
+component "src/components/*" as UI
+node "Kotlin FoodBridge API" as Backend
+App --> Routes
+Routes --> Pages
+Pages --> Auth
+Pages --> API
+Pages --> UI
+API --> Backend
+@enduml
