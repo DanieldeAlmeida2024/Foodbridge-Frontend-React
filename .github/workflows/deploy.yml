@@ -100,7 +100,7 @@ jobs:
           set -euo pipefail
           test -n "$VM_HOST" && test -n "$VM_USER"
           SOMA="$(sha256sum frontend.tar.gz | awk '{print $1}')"
-          ssh -n -o IdentityAgent=none -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 \
+          ssh -o IdentityAgent=none -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 \
             -i ~/.ssh/deploy_key \
             "${VM_USER}@${VM_HOST}" \
             "bash -se -- '${GITHUB_SHA}' '${SOMA}'" < deploy/oracle/atualizar-frontend.sh
