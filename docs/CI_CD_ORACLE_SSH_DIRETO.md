@@ -47,7 +47,24 @@ nginx: configuration file /etc/nginx/nginx.conf test is successful
 FRONTEND ORACLE PREFLIGHT: PASS (somente leitura)
 ```
 
-**Acesso remoto e permissões do frontend homologados; deploy real ainda NÃO executado.** Próxima liberação: autorizar manualmente uma publicação, conferir backup e site HTTP, depois voltar a bloquear o gate até revisão de rollback.
+**Acesso remoto e permissões do frontend homologados.** A primeira publicação manual real foi executada e concluída com sucesso, conforme registro abaixo. O gate de publicação manual foi novamente desativado.
+
+## Primeira publicação real — PASS em 13/11/2026
+
+O operador acionou o workflow via GH CLI, com `OCI_DEPLOY_ENABLED=true` apenas durante a execução manual e `OCI_AUTO_DEPLOY_ENABLED=false`. [Run #43425858526](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43425858526), job `131886975345`: **SUCCESS**, 25 segundos; `npm ci`, testes de sessão, lint, build, SCP, SSH pinado, publicação e limpeza de chave PASS.
+
+Trecho do log remoto (não contém segredos):
+
+```text
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+DEPLOY FRONTEND: PASS commit=290a73562d1b6cb52789c2a5920444028da7ab85 backup=/opt/foodbridge/foodbridge-frontend/foodbridge-frontend/backups/github-actions-290a73562d1b6cb52789c2a5920444028da7ab85-20261113T123143Z
+```
+
+O código publicou o frontend na VM e gerou backup do diretório anterior. Os controles do Nginx passaram antes e depois da troca. **A existência do caminho de backup e o retorno HTTP externo pós-publicação não foram verificados separadamente**; o log comprova que a rotina de backup e publicação terminou sem erro. O rollback permanece implementado, mas não houve simulação controlada de falha.
+
+O operador restabeleceu `OCI_DEPLOY_ENABLED=false` no repositório; `OCI_AUTO_DEPLOY_ENABLED=false` permanece desativado. O primeiro deploy real da API ainda é separado e pendente.
+
+Observação de manutenção: o run emitiu advertência de obsolescência das actions `checkout@v4`/`setup-node@v4` (runtime Node.js 20). A revisão subsequente as atualiza para `@v5`, runtime Node.js 24; essa atualização não modifica a aplicação já publicada na VM e exige CI aprovado.
 
 ## Primeiro deploy manual supervisionado
 
