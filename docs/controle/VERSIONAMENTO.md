@@ -31,3 +31,7 @@ Aumentar MAJOR para quebra de contrato/estado, MINOR para funcionalidade/caso no
 - Cliente HTTP configurável, expiração 401 e cadastro organizacional retornando à seleção.
 - Dez testes Node executados, build e lint locais aprovados; CI separado da publicação manual.
 - Código sem deploy. Homologação em navegador/VM e entrega integral permanecem pendentes.
+
+## v1.2.1 — precisão de escopo Oracle (13/11/2026)
+
+Revisão exclusivamente documental. Inventário, guia de CI/CD e índice passam a listar apenas a infraestrutura pertinente ao FoodBridge. Os componentes próprios são: frontend/Nginx, API Spring Boot, banco PostgreSQL FoodBridge e scripts GitHub Actions/SSH. Recursos hospedados na mesma VM para outros projetos são excluídos da documentação funcional e arquitetural, sem alterar o estado da VM nem o deploy automático.

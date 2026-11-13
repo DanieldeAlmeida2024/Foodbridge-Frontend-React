@@ -7,7 +7,7 @@
 
 ## Escopo
 
-O projeto React/Vite entrega arquivos HTML/CSS/JS do diretório `dist` (não usa imagem Docker). GitHub Actions executa `npm ci`, `npm run test:session`, `npm run lint` e `npm run build` antes de empacotar. O runner usa a chave RSA dedicada `SHA256:3zV6jlZeYgt19xz4h0KrumznEr3SNlyAEiolj+XrmO8` e valida a host key fixada em `known_hosts`. A publicação SSH envia o tarball ao diretório temporário na Oracle e executa `deploy/oracle/atualizar-frontend.sh` por stdin.
+O projeto React/Vite entrega arquivos HTML/CSS/JS do diretório `dist` (gera arquivos estáticos, sem imagem de contêiner). GitHub Actions executa `npm ci`, `npm run test:session`, `npm run lint` e `npm run build` antes de empacotar. O runner usa a chave RSA dedicada `SHA256:3zV6jlZeYgt19xz4h0KrumznEr3SNlyAEiolj+XrmO8` e valida a host key fixada em `known_hosts`. A publicação SSH envia o tarball ao diretório temporário na Oracle e executa `deploy/oracle/atualizar-frontend.sh` por stdin.
 
 ## Proteções
 

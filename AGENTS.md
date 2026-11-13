@@ -28,3 +28,7 @@ Aplicação web da plataforma FoodBridge, incluindo cadastro, autenticação e o
 - Ao alterar contrato HTTP, autorização, modelo de dados, tela, teste ou fluxo de deploy, atualizar documentos vinculados e `docs/controle/VERSIONAMENTO.md` no mesmo PR.
 - Diferenciar especificação histórica, código existente, CI aprovado e e2e homologado; registrar evidência real por commit/run. Não afirmar conformidade LGPD/HTTPS/100% de cobertura sem provas.
 - O CI/CD atual é disparado automaticamente em push de **código** na main. Um PR somente documental não deve acionar nova publicação na Oracle. Não restabelecer gates manuais legados sem decisão explícita.
+
+## Escopo obrigatório da documentação Oracle
+
+Ao documentar infraestrutura, diagramas, inventários, métricas ou apresentações do FoodBridge, listar somente os serviços e recursos próprios do produto: frontend React/Nginx, API Kotlin/Java, banco PostgreSQL FoodBridge, SSH, build, backups e health. A VM pode hospedar outros sistemas; eles não compõem esta arquitetura, mesmo quando a inspeção do host mostra processos adicionais. Não introduzir esses serviços nos documentos do FoodBridge.

@@ -12,7 +12,7 @@ O workflow `.github/workflows/ci.yml` executa `npm ci`, `test:session`, lint e b
 
 Um agente instalado na VM Oracle — mantido no repositório `FoodBridge-API-Kotlin` como `deploy/oracle/pull-approved-artifact.sh` — consulta o Actions deste repositório via HTTPS 443. Só publica o artefato de um run SUCCESS de `push` na main que corresponde exatamente ao HEAD atual. Ele substitui o `dist` do Nginx após staging e mantém backup para rollback. Não exige SSH iniciado pelo GitHub nem Tailscale.
 
-**Não** clonar/buildar este projeto em produção durante esse processo; o artefato é o resultado do CI e não uma imagem Docker. Não altera Oracle Linux, PostgreSQL ou Java.
+**Não** clonar/buildar este projeto em produção durante esse processo; o artefato é o resultado do CI (`dist` estático), não uma imagem do sistema operacional. Não altera Oracle Linux, PostgreSQL ou Java do FoodBridge.
 
 ## Gates ainda pendentes
 
