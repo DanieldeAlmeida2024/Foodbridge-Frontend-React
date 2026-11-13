@@ -146,4 +146,4 @@ O teste `tests/ci/test_inventory_contract.py` compara este bloco ao Git. Todo PR
 - [`vite.config.ts`](../vite.config.ts)
 <!-- INVENTARIO_ARQUIVOS_FIM -->
 
-**Limite:** recursos implantados na VM (Docker, Nginx, PostgreSQL), pacotes `node_modules`, artefatos `dist` e credenciais não pertencem ao Git deste frontend; ver runbooks e a documentação do backend.
+**Limite:** este inventário cobre arquivos Git do frontend. O Nginx do FoodBridge, a API Java, o PostgreSQL da aplicação e suas configurações de produção estão descritos nos runbooks de implantação, mas não são arquivos rastreados neste repositório. Pacotes `node_modules`, artefatos locais `dist` e credenciais também não integram a árvore Git.
