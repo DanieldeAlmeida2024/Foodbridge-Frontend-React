@@ -34,6 +34,21 @@ gh run list --workflow oracle-frontend-preflight.yml --limit 5 --repo DanieldeAl
 
 Exigir `SSH_RSA_OK`, `SSH_EXIT=0`, `FRONTEND ORACLE PREFLIGHT: PASS (somente leitura)`, Nginx ativo e diretórios existentes/graváveis. Esse teste não atualiza o site.
 
+## Preflight real homologado — 13/11/2026
+
+Operador executou no Windows `deploy/oracle/preparar-secrets-ssh-windows.ps1` e confirmou `FRONTEND_SSH_ENV_READY=YES`, com os gates do repositório `OCI_DEPLOY_ENABLED=false` e `OCI_AUTO_DEPLOY_ENABLED=false`. O script registrou RSA dedicada e `known_hosts` na área de secrets do environment `oracle-production` deste repositório, sem exibir a chave.
+
+A execução [GitHub Actions #43424408420](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43424408420), job `131882164371`, terminou **SUCCESS**. Os logs confirmam:
+
+```text
+SSH_RSA_OK
+SSH_EXIT=0
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+FRONTEND ORACLE PREFLIGHT: PASS (somente leitura)
+```
+
+**Acesso remoto e permissões do frontend homologados; deploy real ainda NÃO executado.** Próxima liberação: autorizar manualmente uma publicação, conferir backup e site HTTP, depois voltar a bloquear o gate até revisão de rollback.
+
 ## Primeiro deploy manual supervisionado
 
 Após preflight aprovado e backup da versão anterior verificado:
