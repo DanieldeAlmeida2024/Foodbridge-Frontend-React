@@ -41,5 +41,15 @@ class DirectSshDeployment(unittest.TestCase):
         self.assertNotIn("git reset --hard", REMOTE)
         self.assertNotIn("pg_restore", REMOTE)
 
+    def test_frontend_readonly_preflight_exists(self):
+        preflight = (ROOT / ".github/workflows/oracle-frontend-preflight.yml").read_text(encoding="utf-8")
+        for item in ("workflow_dispatch:", "environment: oracle-production",
+                     "SSH_RSA_OK", "SSH_EXIT=0",
+                     "FRONTEND ORACLE PREFLIGHT: PASS",
+                     "StrictHostKeyChecking=yes", "sudo -n nginx -t"):
+            self.assertIn(item, preflight)
+        for forbidden in ("systemctl restart", "pg_restore", "sudo tee", "scp "):
+            self.assertNotIn(forbidden, preflight)
+
 if __name__ == "__main__":
     unittest.main()
