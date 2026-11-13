@@ -1,4 +1,7 @@
-# FoodBridge React — publicação direta no Nginx via GitHub Actions/SSH\n\n> **IMPORTANTE — Atualização do contrato em 13/11/2026:** as instruções de flags desta página são históricas; o deploy do frontend agora é **automático em push de código na main, sem OCI_DEPLOY_ENABLED/OCI_AUTO_DEPLOY_ENABLED**. Ver [OCI_AUTOMATIC_CICD.md](OCI_AUTOMATIC_CICD.md). Os comandos antigos que alteram flags não bloqueiam mais publicações.\n
+# FoodBridge React — publicação direta no Nginx via GitHub Actions/SSH
+
+> **IMPORTANTE — Atualização do contrato em 13/11/2026:** as instruções de flags desta página são históricas; o deploy do frontend agora é **automático em push de código na main, sem OCI_DEPLOY_ENABLED/OCI_AUTO_DEPLOY_ENABLED**. Ver [OCI_AUTOMATIC_CICD.md](OCI_AUTOMATIC_CICD.md). Os comandos antigos que alteram flags não bloqueiam mais publicações.
+
 
 **FB-WEB-CD-SSH-002 · 13/11/2026 · versão em homologação.**
 
