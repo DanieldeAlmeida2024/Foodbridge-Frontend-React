@@ -27,8 +27,14 @@ cleanup() {
       mv -- "$TARGET" "$FAILED" || echo "ERRO: falha ao afastar versao nova" >&2
     fi
     if [[ -n "$BACKUP" && -d "$BACKUP" ]]; then
-      mv -- "$BACKUP" "$TARGET" || echo "ERRO CRITICO: restaurar $BACKUP manualmente" >&2
-      sudo -n restorecon -RF "$TARGET" || true
+      if mv -- "$BACKUP" "$TARGET"; then
+        # Restabelece leitura do Nginx caso o backup tenha modes 0700/0600.
+        find "$TARGET" -type d -exec chmod 0755 {} +
+        find "$TARGET" -type f -exec chmod 0644 {} +
+        sudo -n restorecon -RF "$TARGET" || true
+      else
+        echo "ERRO CRITICO: restaurar $BACKUP manualmente" >&2
+      fi
     fi
   fi
   [[ -z "$STAGE" || ! -d "$STAGE" ]] || rm -rf -- "$STAGE"
@@ -67,6 +73,10 @@ PY
 STAGE="$(mktemp -d "$BASE/.dist-next.XXXXXXXX")"
 tar -xzf "$ARCHIVE" -C "$STAGE" --no-same-owner --no-same-permissions
 test -s "$STAGE/index.html" || { echo "index.html vazio no pacote" >&2; exit 1; }
+# mktemp cria o stage com mode 0700 e umask 077: Nginx nao consegue atravessar.
+# dist contem apenas arquivos publicos do build Vite; normalizar modes antes do mv.
+find "$STAGE" -type d -exec chmod 0755 {} +
+find "$STAGE" -type f -exec chmod 0644 {} +
 sudo -n restorecon -RF "$STAGE"
 mkdir -p "$BASE/backups"
 BACKUP="$BASE/backups/github-actions-${COMMIT}-$(date -u +%Y%m%dT%H%M%SZ)"
@@ -77,5 +87,7 @@ STAGE=""
 sudo -n restorecon -RF "$TARGET"
 sudo -n nginx -t
 test -s "$TARGET/index.html"
+HTTP_LOCAL="$(curl --noproxy '*' --silent --show-error --connect-timeout 3 --max-time 15 --output /dev/null --write-out '%{http_code}' http://127.0.0.1/ || true)"
+[[ "$HTTP_LOCAL" == '200' ]] || { echo "Nginx local respondeu HTTP $HTTP_LOCAL apos trocar dist; acionando rollback" >&2; exit 1; }
 DEPLOY_OK=1
-echo "DEPLOY FRONTEND: PASS commit=$COMMIT backup=$BACKUP"
+echo "DEPLOY FRONTEND: PASS commit=$COMMIT backup=$BACKUP HTTP_LOCAL=$HTTP_LOCAL"
