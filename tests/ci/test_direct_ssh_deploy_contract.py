@@ -14,7 +14,9 @@ class DirectSshDeployment(unittest.TestCase):
             self.assertIn(item, WORKFLOW)
         self.assertNotIn("vars.OCI_DEPLOY_ENABLED", WORKFLOW)
         self.assertNotIn("vars.OCI_AUTO_DEPLOY_ENABLED", WORKFLOW)
-        self.assertIn("FRONTEND_PUBLIC_HTTP=200", WORKFLOW)
+        self.assertIn("FRONTEND_NGINX_LOCAL_HTTP=200", WORKFLOW)
+        self.assertIn("FRONTEND_EXTERNAL_HTTP=", WORKFLOW)
+        self.assertIn("http://127.0.0.1/", WORKFLOW)
 
     def test_ci_before_archive_and_deploy(self):
         for item in ("npm ci", "npm run test:session", "npm run lint",
