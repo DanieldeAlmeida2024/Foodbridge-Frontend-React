@@ -1,61 +1,36 @@
-import { createContext, useState } from "react";
+import { createContext, useEffect, useState } from "react";
+import { clearSession, readSession, saveLogin, saveSelection } from "../auth/session";
+import type { SelectionResponse, User } from "../auth/session";
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType | null>(null);
-type OrganizationSummary = {
-  organizacaoId: number;
-  nome: string;
-  role: string;
-  status: string;
-};
-
-type User = {
-  tempToken?: string | null;
-  accessToken?: string | null;
-  nome: string;
-  email: string;
-  organizacoes: OrganizationSummary[];
-  status?: string;
-};
 
 type AuthContextType = {
   user: User | null;
   loginTemp: (data: User) => void;
-  loginFinal: (token: string) => void;
+  loginFinal: (response: SelectionResponse | string) => void;
   logout: () => void;
 };
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => readSession(localStorage).user);
 
-  const loginTemp = (data: User) => {
-    if (data.tempToken) {
-      localStorage.setItem("tempToken", data.tempToken);
-    } else {
-      localStorage.removeItem("tempToken");
-    }
+  useEffect(() => {
+    const synchronize = () => setUser(readSession(localStorage).user);
+    window.addEventListener("storage", synchronize);
+    window.addEventListener("foodbridge:session-expired", synchronize);
+    return () => {
+      window.removeEventListener("storage", synchronize);
+      window.removeEventListener("foodbridge:session-expired", synchronize);
+    };
+  }, []);
 
-    if (data.accessToken) {
-      localStorage.setItem("token", data.accessToken);
-    } else {
-      localStorage.removeItem("token");
-    }
-
-    setUser(data);
-  };
-
-  const loginFinal = (token: string) => {
-    localStorage.setItem("token", token);
-    localStorage.removeItem("tempToken");
-  };
-
+  const loginTemp = (data: User) => setUser(saveLogin(localStorage, data));
+  const loginFinal = (response: SelectionResponse | string) => setUser(saveSelection(localStorage, response));
   const logout = () => {
-    localStorage.clear();
+    clearSession(localStorage);
     setUser(null);
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loginTemp, loginFinal, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={{ user, loginTemp, loginFinal, logout }}>{children}</AuthContext.Provider>;
 }

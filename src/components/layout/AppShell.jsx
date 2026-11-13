@@ -1,4 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
+import { useContext } from "react";
+import { AuthContext } from "../../context/AuthContext";
+import { clearSession, readSession } from "../../auth/session";
 import StyleIcon from "../ui/StyleIcon";
 
 const navItems = [
@@ -9,24 +12,15 @@ const navItems = [
   { to: "/admin", label: "Admin", roles: ["ADMIN"] },
 ];
 
-function getSessionRole() {
-  const storedRole = localStorage.getItem("role");
-  if (storedRole) return storedRole;
-
-  const selected = localStorage.getItem("selectedOrganization");
-  if (selected) return JSON.parse(selected)?.role;
-
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  return user?.role || user?.organizacoes?.[0]?.role || "";
-}
-
 export default function AppShell({ title, subtitle, children }) {
   const navigate = useNavigate();
-  const role = getSessionRole();
+  const auth = useContext(AuthContext);
+  const role = readSession(localStorage).claims?.role || "";
   const visibleItems = navItems.filter((item) => !item.roles || item.roles.includes(role));
 
   function logout() {
-    localStorage.clear();
+    if (auth) auth.logout();
+    else clearSession(localStorage);
     navigate("/login");
   }
 

@@ -2,9 +2,13 @@
 name: Deploy Frontend FoodBridge
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Publicar frontend na Oracle após homologação'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: read
@@ -15,6 +19,8 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.ref == 'refs/heads/main' && inputs.deploy == true && vars.VM_DEPLOY_ENABLED == 'true'
+    environment: oracle-production
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
@@ -44,18 +50,24 @@ jobs:
           SSH_KEY: ${{ secrets.VM_SSH_KEY }}
           KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
         run: |
+          set -euo pipefail
+          for nome in SSH_KEY KNOWN_HOSTS; do
+            test -n "${!nome:-}" || { echo "::error::Configuração ausente: $nome"; exit 1; }
+          done
+          umask 077
           install -m 700 -d ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
+          ssh-keygen -y -f ~/.ssh/deploy_key -P '' >/dev/null
 
       - name: Enviar build para Oracle Cloud
         env:
           VM_HOST: ${{ vars.VM_HOST }}
           VM_USER: ${{ vars.VM_USER }}
         run: |
-          scp -o StrictHostKeyChecking=yes \
+          scp -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
             -i ~/.ssh/deploy_key \
             frontend.tar.gz \
             "${VM_USER}@${VM_HOST}:/tmp/foodbridge-frontend-${GITHUB_SHA}.tar.gz"
@@ -65,7 +77,7 @@ jobs:
           VM_HOST: ${{ vars.VM_HOST }}
           VM_USER: ${{ vars.VM_USER }}
         run: |
-          ssh -o StrictHostKeyChecking=yes \
+          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
             -i ~/.ssh/deploy_key \
             "${VM_USER}@${VM_HOST}" \
             "bash -se -- '${GITHUB_SHA}'" <<'REMOTE'
@@ -104,3 +116,7 @@ jobs:
 
       - name: Confirmar deployment
         run: echo "Deploy frontend concluido no commit ${GITHUB_SHA}"
+
+      - name: Remover chave temporária
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

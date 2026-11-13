@@ -94,13 +94,6 @@ export default function Login() {
     const hasOrg = (user.organizacoes?.length || 0) > 0;
 
     if (user.accessToken) {
-      const selectedOrg = user.organizacoes?.[0];
-      if (selectedOrg) {
-        localStorage.setItem("selectedOrganization", JSON.stringify(selectedOrg));
-        localStorage.setItem("role", selectedOrg.role);
-        localStorage.setItem("organizacaoId", String(selectedOrg.organizacaoId));
-      }
-
       navigate("/dashboard");
       return;
     }
@@ -135,7 +128,7 @@ export default function Login() {
       loginTemp(data);
 
       // 🔥 ESSENCIAL (persistência)
-      localStorage.setItem("user", JSON.stringify(data));
+
 
       // 🚀 redirect correto
       handleRedirect(data);

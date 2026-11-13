@@ -1,5 +1,6 @@
 import AuthLayout from "../components/layout/AuthLayout";
-import { useState } from "react";
+import { useContext, useState } from "react";
+import { AuthContext } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../api/client";
 
@@ -37,6 +38,7 @@ function getErrorMessage(err: unknown, fallback: string) {
 
 export default function OrganizationForm() {
   const navigate = useNavigate();
+  const auth = useContext(AuthContext);
 
   const [form, setForm] = useState<FormData>({
     nome: "",
@@ -159,11 +161,17 @@ export default function OrganizationForm() {
 
       const headers = { Authorization: `Bearer ${token}` };
 
-      await api.post("/organizacoes", form, { headers });
+      const { data } = await api.post("/organizacoes", form, { headers });
+      if (auth?.user && data.id) {
+        auth.loginTemp({ ...auth.user, organizacoes: [
+          ...auth.user.organizacoes.filter(org => org.organizacaoId !== data.id),
+          { organizacaoId: data.id, nome: data.nome || form.nome, role: data.role || form.role, status: data.status || "REVISAO" },
+        ] });
+      }
 
       // 🔥 REDIRECT COM DELAY
       setTimeout(() => {
-        navigate("/dashboard");
+        navigate("/selecionar-organizacao");
       }, 500);
 
     } catch (err: unknown) {

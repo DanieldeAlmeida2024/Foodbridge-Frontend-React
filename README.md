@@ -113,3 +113,15 @@ export default defineConfig([
 - [Diagramas UML editáveis](docs/uml/README.md)
 - [Plano de testes](docs/testes/PLANO_DE_TESTES.md)
 - [Controle de versões](docs/controle/VERSIONAMENTO.md)
+
+## Validação funcional da sessão
+```sh
+npm ci
+npm run test:session
+npm run lint
+npm run build
+```
+A URL da API pode ser configurada com `VITE_API_BASE_URL`; o padrão usa o mesmo origin.
+CI roda em PRs. Publicação exige workflow manual, `deploy=true` e
+`VM_DEPLOY_ENABLED=true` no environment `oracle-production`.
+[Casos e limites dos testes](docs/testes/SESSAO_E_INTEGRACAO.md).
