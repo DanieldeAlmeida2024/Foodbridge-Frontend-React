@@ -1,3 +1,9 @@
+> **ALTERNATIVA NÃO SELECIONADA (13/11/2026):** o modelo por artefatos baixados
+> pela VM ficou disponível como opção, mas a implementação operacional
+> escolhida é **GitHub Actions → SSH direto → Nginx**, descrita em
+> [CI_CD_ORACLE_SSH_DIRETO.md](CI_CD_ORACLE_SSH_DIRETO.md).
+> Não instalar timers/agentes de pull para este plano sem uma nova decisão.
+
 # Implantação do frontend por artefato CI (Oracle Cloud)
 
 FB-WEB-PULL-001 | 13/11/2026 | implementação em PR, **sem deploy realizado**.
