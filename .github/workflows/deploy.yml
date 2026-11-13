@@ -2,6 +2,8 @@
 name: Deploy Frontend FoodBridge
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       deploy:
@@ -19,9 +21,16 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main' && inputs.deploy == true && vars.VM_DEPLOY_ENABLED == 'true'
+    # Apenas a main pode publicar. Push automatico exige duas flags; homologacao manual continua opt-in.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      vars.VM_DEPLOY_ENABLED == 'true' &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.deploy == true) ||
+        (github.event_name == 'push' && vars.VM_AUTO_DEPLOY_ENABLED == 'true')
+      )
     environment: oracle-production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -33,11 +42,17 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
 
       - name: Instalar dependencias
         run: npm ci
+
+      - name: Testes de sessao
+        run: npm run test:session
+
+      - name: Analise estatica
+        run: npm run lint
 
       - name: Gerar build
         run: npm run build
@@ -47,8 +62,8 @@ jobs:
 
       - name: Configurar SSH
         env:
-          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
-          KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
+          SSH_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           for nome in SSH_KEY KNOWN_HOSTS; do
@@ -64,8 +79,8 @@ jobs:
 
       - name: Enviar build para Oracle Cloud
         env:
-          VM_HOST: ${{ vars.VM_HOST }}
-          VM_USER: ${{ vars.VM_USER }}
+          VM_HOST: ${{ vars.OCI_SSH_HOST }}
+          VM_USER: ${{ vars.OCI_SSH_USER }}
         run: |
           scp -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
             -i ~/.ssh/deploy_key \
@@ -77,41 +92,57 @@ jobs:
           VM_HOST: ${{ vars.VM_HOST }}
           VM_USER: ${{ vars.VM_USER }}
         run: |
+          SOMA="$(sha256sum frontend.tar.gz | awk '{print $1}')"
           ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
             -i ~/.ssh/deploy_key \
             "${VM_USER}@${VM_HOST}" \
-            "bash -se -- '${GITHUB_SHA}'" <<'REMOTE'
-          set -euo pipefail
+            "bash -se -- '${GITHUB_SHA}' '${SOMA}'" <<'REMOTE'
+          set -Eeuo pipefail
 
           SHA="$1"
+          SOMA_ESPERADA="$2"
+          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'SHA Git invalido' >&2; exit 2; }
+          [[ "$SOMA_ESPERADA" =~ ^[0-9a-f]{64}$ ]] || { echo 'SHA256 invalido' >&2; exit 2; }
           BASE="/opt/foodbridge/foodbridge-frontend/foodbridge-frontend"
           TARGET="$BASE/dist"
           ARCHIVE="/tmp/foodbridge-frontend-${SHA}.tar.gz"
-          BACKUP="$BASE/backups/github-actions-${SHA}"
+          [[ -f "$ARCHIVE" && -d "$TARGET" && -w "$BASE" ]] || { echo 'Arquivos/permisoes do frontend indisponiveis' >&2; exit 1; }
+          printf '%s  %s\n' "$SOMA_ESPERADA" "$ARCHIVE" | sha256sum -c --status
+          sudo -n nginx -t
           STAGE="$(mktemp -d "$BASE/.dist-next.XXXXXXXX")"
-
-          mkdir -p "$BASE/backups"
+          BACKUP=""
+          MOVED=0
+          rollback() {
+            rc=$?
+            trap - ERR
+            if [[ "$MOVED" == 1 ]]; then
+              if [[ -d "$TARGET" ]]; then mv "$TARGET" "$BASE/.dist-failed-${SHA}-$(date -u +%s)" || true; fi
+              if [[ -n "$BACKUP" && -d "$BACKUP" ]]; then
+                mv "$BACKUP" "$TARGET" || echo 'ERRO CRITICO: restauracao da versao anterior falhou' >&2
+                sudo -n restorecon -RF "$TARGET" || true
+              fi
+            fi
+            [[ -z "$STAGE" || ! -d "$STAGE" ]] || rm -rf -- "$STAGE"
+            echo "Deploy frontend falhou, rollback solicitado, exit=$rc" >&2
+            exit "$rc"
+          }
+          trap rollback ERR
           tar -xzf "$ARCHIVE" -C "$STAGE"
           test -s "$STAGE/index.html"
-
-          sudo restorecon -RF "$STAGE"
-
-          if [ -d "$TARGET" ]; then
-            mv "$TARGET" "$BACKUP"
-          fi
-
-          if ! mv "$STAGE" "$TARGET"; then
-            if [ -d "$BACKUP" ]; then
-              mv "$BACKUP" "$TARGET"
-            fi
-            exit 1
-          fi
-
-          sudo restorecon -RF "$TARGET"
-          sudo nginx -t
-          rm -f "$ARCHIVE"
-
-          echo "Frontend publicado: $SHA"
+          # O artefato vem do build do CI; symlinks inesperados sao rejeitados.
+          [[ -z "$(find "$STAGE" -type l -print -quit)" ]] || { echo 'Symlink no pacote' >&2; exit 1; }
+          sudo -n restorecon -RF "$STAGE"
+          mkdir -p "$BASE/backups"
+          BACKUP="$BASE/backups/github-actions-${SHA}-$(date -u +%Y%m%dT%H%M%SZ)"
+          mv "$TARGET" "$BACKUP"
+          MOVED=1
+          mv "$STAGE" "$TARGET"
+          sudo -n restorecon -RF "$TARGET"
+          sudo -n nginx -t
+          test -s "$TARGET/index.html"
+          trap - ERR
+          rm -f -- "$ARCHIVE"
+          echo "Frontend publicado: $SHA; backup=$BACKUP"
           REMOTE
 
       - name: Confirmar deployment
