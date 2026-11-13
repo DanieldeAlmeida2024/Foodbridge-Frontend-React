@@ -122,6 +122,11 @@ npm run lint
 npm run build
 ```
 A URL da API pode ser configurada com `VITE_API_BASE_URL`; o padrão usa o mesmo origin.
-CI roda em PRs. Publicação exige workflow manual, `deploy=true` e
-`VM_DEPLOY_ENABLED=true` no environment `oracle-production`.
+CI executa em PRs e pushes na main, com teste de sessão, lint e build. Publicação direta
+via **SSH do GitHub Actions para a Oracle** exige as credenciais do environment
+`oracle-production` neste repositório e a variável de repositório
+`OCI_DEPLOY_ENABLED=true`. No primeiro deploy, execute o workflow manual
+`deploy.yml` com `deploy=true`; para publicar automaticamente em cada push
+aprovado à main, habilite também `OCI_AUTO_DEPLOY_ENABLED=true` após homologação.
+O backend usa outro repositório e secrets próprios. [Runbook do CI/CD por SSH](docs/CI_CD_ORACLE_SSH_DIRETO.md).
 [Casos e limites dos testes](docs/testes/SESSAO_E_INTEGRACAO.md).
