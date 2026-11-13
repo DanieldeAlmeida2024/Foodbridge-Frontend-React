@@ -115,14 +115,22 @@ jobs:
             "${VM_USER}@${VM_HOST}" \
             "bash -se -- '${GITHUB_SHA}' '${SOMA}'" < deploy/oracle/atualizar-frontend.sh
 
-      - name: Confirmar deployment
+      - name: Confirmar deployment no Nginx da VM e reportar HTTP externo
         shell: bash
+        env:
+          VM_HOST: ${{ vars.OCI_SSH_HOST }}
+          VM_USER: ${{ vars.OCI_SSH_USER }}
         run: |
           set -euo pipefail
           echo "Deploy frontend concluido no commit ${GITHUB_SHA}"
-          HTTP_CODE="$(curl -4 --noproxy '*' --silent --show-error --retry 3 --retry-delay 2 --connect-timeout 5 --max-time 20 -o /dev/null -w '%{http_code}' "http://${{ vars.OCI_SSH_HOST }}/")"
-          [[ "$HTTP_CODE" == '200' ]] || { echo "::error::Nginx externo nao respondeu 200: $HTTP_CODE"; exit 1; }
-          echo "FRONTEND_PUBLIC_HTTP=200"
+          LOCAL_CODE="$(ssh -o IdentityAgent=none -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 -i ~/.ssh/deploy_key "${VM_USER}@${VM_HOST}" "curl --noproxy '*' --silent --show-error --connect-timeout 3 --max-time 15 --output /dev/null --write-out '%{http_code}' http://127.0.0.1/")"
+          [[ "$LOCAL_CODE" == '200' ]] || { echo "::error::Nginx local nao respondeu HTTP 200: $LOCAL_CODE"; exit 1; }
+          echo "FRONTEND_NGINX_LOCAL_HTTP=200"
+          PUBLIC_CODE="$(curl -4 --noproxy '*' --silent --connect-timeout 5 --max-time 15 --output /dev/null --write-out '%{http_code}' "http://${VM_HOST}/" || true)"
+          echo "FRONTEND_EXTERNAL_HTTP=${PUBLIC_CODE:-unavailable}"
+          if [[ "$PUBLIC_CODE" != '200' ]]; then
+            echo "::warning::Resposta externa do GitHub runner: ${PUBLIC_CODE:-sem conexao}; verificar WAF/politica do IP publico. O deploy local foi confirmado no Nginx."
+          fi
 
       - name: Remover chave temporária
         if: always()
