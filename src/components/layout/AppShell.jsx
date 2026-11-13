@@ -6,6 +6,7 @@ import StyleIcon from "../ui/StyleIcon";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/perfil", label: "Meu perfil" },
   { to: "/doacoes", label: "Doacoes" },
   { to: "/requisicoes", label: "Requisicoes" },
   { to: "/voluntarios", label: "Voluntarios", roles: ["ONG"] },

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import ProtectedRoute from "./ProtectedRoute";
+import Profile from "../pages/Profile";
 import Landing from "../pages/Landing";
 import Register from "../pages/Register";
 import Login from "../pages/Login";
@@ -27,6 +28,7 @@ export default function AppRoutes() {
         <Route path="/voluntarios" element={<ProtectedRoute roles={["ONG"]}><Volunteers /></ProtectedRoute>} />
         <Route path="/admin" element={<ProtectedRoute roles={["ADMIN"]}><Admin /></ProtectedRoute>} />
         <Route path="*" element={<Landing />} />
+        <Route path="/perfil" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );
