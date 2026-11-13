@@ -4,6 +4,16 @@ name: Deploy Frontend FoodBridge
 on:
   push:
     branches: [main]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+      - 'tsconfig*.json'
+      - 'deploy/oracle/**'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       deploy:
@@ -21,13 +31,13 @@ concurrency:
 
 jobs:
   deploy:
-    # Apenas a main pode publicar. Push automatico exige duas flags; homologacao manual continua opt-in.
+    # Publicacao continua em push na main, com testes, SSH pinado e rollback.
+    # Pull requests nunca publicam. Nenhuma flag de variavel bloqueia push.
     if: >-
       github.ref == 'refs/heads/main' &&
-      vars.OCI_DEPLOY_ENABLED == 'true' &&
       (
-        (github.event_name == 'workflow_dispatch' && inputs.deploy == true) ||
-        (github.event_name == 'push' && vars.OCI_AUTO_DEPLOY_ENABLED == 'true')
+        github.event_name == 'push' ||
+        (github.event_name == 'workflow_dispatch' && inputs.deploy == true)
       )
     environment: oracle-production
     runs-on: ubuntu-24.04
@@ -106,7 +116,13 @@ jobs:
             "bash -se -- '${GITHUB_SHA}' '${SOMA}'" < deploy/oracle/atualizar-frontend.sh
 
       - name: Confirmar deployment
-        run: echo "Deploy frontend concluido no commit ${GITHUB_SHA}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Deploy frontend concluido no commit ${GITHUB_SHA}"
+          HTTP_CODE="$(curl -4 --noproxy '*' --silent --show-error --retry 3 --retry-delay 2 --connect-timeout 5 --max-time 20 -o /dev/null -w '%{http_code}' "http://${{ vars.OCI_SSH_HOST }}/")"
+          [[ "$HTTP_CODE" == '200' ]] || { echo "::error::Nginx externo nao respondeu 200: $HTTP_CODE"; exit 1; }
+          echo "FRONTEND_PUBLIC_HTTP=200"
 
       - name: Remover chave temporária
         if: always()

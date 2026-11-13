@@ -7,13 +7,14 @@ WORKFLOW = (ROOT / ".github/workflows/deploy.yml").read_text(encoding="utf-8")
 REMOTE = (ROOT / "deploy/oracle/atualizar-frontend.sh").read_text(encoding="utf-8")
 
 class DirectSshDeployment(unittest.TestCase):
-    def test_two_gates_and_main_only(self):
+    def test_push_main_deploy_without_flag_gate(self):
         for item in ("branches: [main]", "github.ref == 'refs/heads/main'",
-                     "vars.OCI_DEPLOY_ENABLED == 'true'",
-                     "vars.OCI_AUTO_DEPLOY_ENABLED == 'true'",
                      "github.event_name == 'workflow_dispatch' && inputs.deploy == true",
                      "github.event_name == 'push'"):
             self.assertIn(item, WORKFLOW)
+        self.assertNotIn("vars.OCI_DEPLOY_ENABLED", WORKFLOW)
+        self.assertNotIn("vars.OCI_AUTO_DEPLOY_ENABLED", WORKFLOW)
+        self.assertIn("FRONTEND_PUBLIC_HTTP=200", WORKFLOW)
 
     def test_ci_before_archive_and_deploy(self):
         for item in ("npm ci", "npm run test:session", "npm run lint",
