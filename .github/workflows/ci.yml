@@ -20,3 +20,10 @@ jobs:
       - run: npm run test:session
       - run: npm run lint
       - run: npm run build
+      - name: Publicar build React aprovado para implantacao pela VM
+        uses: actions/upload-artifact@v4
+        with:
+          name: foodbridge-frontend-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
