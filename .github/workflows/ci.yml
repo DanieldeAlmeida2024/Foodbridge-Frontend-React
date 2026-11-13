@@ -20,6 +20,11 @@ jobs:
       - run: npm run test:session
       - run: npm run lint
       - run: npm run build
+      - name: Validar scripts e contrato de deploy SSH sem acessar producao
+        shell: bash
+        run: |
+          bash -n deploy/oracle/atualizar-frontend.sh
+          python3 -m unittest discover -s tests/ci -p 'test_*_contract.py' -v
       - name: Publicar build React aprovado para implantacao pela VM
         uses: actions/upload-artifact@v4
         with:
