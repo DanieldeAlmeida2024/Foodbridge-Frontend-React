@@ -1,0 +1,63 @@
+name: Oracle - preflight frontend SSH somente leitura
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: frontend-oracle-readonly
+  cancel-in-progress: false
+jobs:
+  preflight-frontend:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: oracle-production
+    env:
+      SSH_HOST: ${{ vars.OCI_SSH_HOST }}
+      SSH_USER: ${{ vars.OCI_SSH_USER }}
+      SSH_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+    steps:
+      - name: Conferir variaveis e autenticar sem password
+        shell: bash
+        run: |
+          set -euo pipefail
+          for var in SSH_HOST SSH_USER SSH_KEY SSH_KNOWN_HOSTS; do
+            [[ -n "${!var:-}" ]] || { echo "::error::$var ausente"; exit 1; }
+          done
+          umask 077
+          install -d -m 0700 "$RUNNER_TEMP/foodbridge-web-ssh"
+          printf '%s\n' "$SSH_KEY" > "$RUNNER_TEMP/foodbridge-web-ssh/key"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$RUNNER_TEMP/foodbridge-web-ssh/known_hosts"
+          ssh-keygen -y -f "$RUNNER_TEMP/foodbridge-web-ssh/key" -P '' > "$RUNNER_TEMP/foodbridge-web-ssh/key.pub"
+          fp="$(ssh-keygen -lf "$RUNNER_TEMP/foodbridge-web-ssh/key.pub" -E sha256 | awk '{print $2}')"
+          [[ "$fp" == 'SHA256:3zV6jlZeYgt19xz4h0KrumznEr3SNlyAEiolj+XrmO8' ]] || { echo '::error::Fingerprint RSA inesperada'; exit 1; }
+      - name: Conferir Nginx e permissoes sem alterar a VM
+        shell: bash
+        run: |
+          set -euo pipefail
+          SSH_OPTS=(-i "$RUNNER_TEMP/foodbridge-web-ssh/key"
+            -o IdentityAgent=none -o IdentitiesOnly=yes -o BatchMode=yes
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$RUNNER_TEMP/foodbridge-web-ssh/known_hosts"
+            -o ConnectTimeout=15)
+          ssh -n "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" 'echo SSH_RSA_OK'
+          echo 'SSH_EXIT=0'
+          ssh "${SSH_OPTS[@]}" "$SSH_USER@$SSH_HOST" 'bash -se' <<'REMOTE'
+          BASE=/opt/foodbridge/foodbridge-frontend/foodbridge-frontend
+          TARGET="$BASE/dist"
+          test -d "$TARGET"
+          test -s "$TARGET/index.html"
+          test -w "$BASE"
+          command -v python3
+          command -v restorecon
+          command -v tar
+          command -v sha256sum
+          sudo -n nginx -t
+          sudo -n systemctl is-active --quiet nginx
+          echo 'FRONTEND ORACLE PREFLIGHT: PASS (somente leitura)'
+          REMOTE
+      - name: Remover credenciais do runner
+        if: always()
+        shell: bash
+        run: rm -f "$RUNNER_TEMP/foodbridge-web-ssh/key" "$RUNNER_TEMP/foodbridge-web-ssh/key.pub" "$RUNNER_TEMP/foodbridge-web-ssh/known_hosts"

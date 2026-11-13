@@ -2,6 +2,8 @@
 name: Deploy Frontend FoodBridge
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       deploy:
@@ -19,9 +21,16 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.ref == 'refs/heads/main' && inputs.deploy == true && vars.VM_DEPLOY_ENABLED == 'true'
+    # Apenas a main pode publicar. Push automatico exige duas flags; homologacao manual continua opt-in.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      vars.OCI_DEPLOY_ENABLED == 'true' &&
+      (
+        (github.event_name == 'workflow_dispatch' && inputs.deploy == true) ||
+        (github.event_name == 'push' && vars.OCI_AUTO_DEPLOY_ENABLED == 'true')
+      )
     environment: oracle-production
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -33,11 +42,17 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
           cache: npm
 
       - name: Instalar dependencias
         run: npm ci
+
+      - name: Testes de sessao
+        run: npm run test:session
+
+      - name: Analise estatica
+        run: npm run lint
 
       - name: Gerar build
         run: npm run build
@@ -45,10 +60,10 @@ jobs:
       - name: Empacotar frontend
         run: tar -czf frontend.tar.gz -C dist .
 
-      - name: Configurar SSH
+      - name: Configurar SSH com fingerprint dedicada e host pinado
         env:
-          SSH_KEY: ${{ secrets.VM_SSH_KEY }}
-          KNOWN_HOSTS: ${{ vars.VM_KNOWN_HOSTS }}
+          SSH_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           for nome in SSH_KEY KNOWN_HOSTS; do
@@ -60,63 +75,39 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/deploy_key -P '' >/dev/null
+          ssh-keygen -y -f ~/.ssh/deploy_key -P '' > ~/.ssh/deploy_key.pub
+          FINGERPRINT="$(ssh-keygen -lf ~/.ssh/deploy_key.pub -E sha256 | awk '{print $2}')"
+          [[ "$FINGERPRINT" == 'SHA256:3zV6jlZeYgt19xz4h0KrumznEr3SNlyAEiolj+XrmO8' ]] || {
+            echo '::error::Chave RSA dedicada inesperada'; exit 1;
+          }
 
       - name: Enviar build para Oracle Cloud
         env:
-          VM_HOST: ${{ vars.VM_HOST }}
-          VM_USER: ${{ vars.VM_USER }}
+          VM_HOST: ${{ vars.OCI_SSH_HOST }}
+          VM_USER: ${{ vars.OCI_SSH_USER }}
         run: |
           scp -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
-            -i ~/.ssh/deploy_key \
+            -o IdentityAgent=none -i ~/.ssh/deploy_key \
             frontend.tar.gz \
             "${VM_USER}@${VM_HOST}:/tmp/foodbridge-frontend-${GITHUB_SHA}.tar.gz"
 
-      - name: Publicar no Nginx
+      - name: Publicar no Nginx com rollback
         env:
-          VM_HOST: ${{ vars.VM_HOST }}
-          VM_USER: ${{ vars.VM_USER }}
+          VM_HOST: ${{ vars.OCI_SSH_HOST }}
+          VM_USER: ${{ vars.OCI_SSH_USER }}
+        shell: bash
         run: |
-          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
+          set -euo pipefail
+          test -n "$VM_HOST" && test -n "$VM_USER"
+          SOMA="$(sha256sum frontend.tar.gz | awk '{print $1}')"
+          ssh -o IdentityAgent=none -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 \
             -i ~/.ssh/deploy_key \
             "${VM_USER}@${VM_HOST}" \
-            "bash -se -- '${GITHUB_SHA}'" <<'REMOTE'
-          set -euo pipefail
-
-          SHA="$1"
-          BASE="/opt/foodbridge/foodbridge-frontend/foodbridge-frontend"
-          TARGET="$BASE/dist"
-          ARCHIVE="/tmp/foodbridge-frontend-${SHA}.tar.gz"
-          BACKUP="$BASE/backups/github-actions-${SHA}"
-          STAGE="$(mktemp -d "$BASE/.dist-next.XXXXXXXX")"
-
-          mkdir -p "$BASE/backups"
-          tar -xzf "$ARCHIVE" -C "$STAGE"
-          test -s "$STAGE/index.html"
-
-          sudo restorecon -RF "$STAGE"
-
-          if [ -d "$TARGET" ]; then
-            mv "$TARGET" "$BACKUP"
-          fi
-
-          if ! mv "$STAGE" "$TARGET"; then
-            if [ -d "$BACKUP" ]; then
-              mv "$BACKUP" "$TARGET"
-            fi
-            exit 1
-          fi
-
-          sudo restorecon -RF "$TARGET"
-          sudo nginx -t
-          rm -f "$ARCHIVE"
-
-          echo "Frontend publicado: $SHA"
-          REMOTE
+            "bash -se -- '${GITHUB_SHA}' '${SOMA}'" < deploy/oracle/atualizar-frontend.sh
 
       - name: Confirmar deployment
         run: echo "Deploy frontend concluido no commit ${GITHUB_SHA}"
 
       - name: Remover chave temporária
         if: always()
-        run: rm -f ~/.ssh/deploy_key
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/deploy_key.pub
