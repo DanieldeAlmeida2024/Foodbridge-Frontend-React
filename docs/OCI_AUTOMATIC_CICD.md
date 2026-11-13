@@ -6,7 +6,7 @@
 
 Ao mesclar alterações de código, assets, dependências ou workflow no branch `main`, o GitHub Actions `.github/workflows/deploy.yml` realiza automaticamente `npm ci`, testes de sessão, `lint`, build React/Vite, compactação, envio SSH com host key fixa e implantação no Nginx. Não é necessário alterar `OCI_DEPLOY_ENABLED` ou `OCI_AUTO_DEPLOY_ENABLED`: **essas variáveis não são utilizadas pelo workflow**. Alterações apenas de documentação não reiniciam o processo de publicação.
 
-O deployment preserva o backup do `dist` anterior; valida o SHA256, impede links/caminhos tar inseguros, faz `nginx -t` antes e depois da troca e confirma HTTP 200 na raiz pública do Nginx. Não reinicia Nginx, Docker ou a API nem altera PostgreSQL.
+O deployment preserva o backup do `dist` anterior; valida o SHA256, impede links/caminhos tar inseguros, faz `nginx -t` antes e depois da troca e confirma HTTP 200 **no Nginx local da VM por SSH**. A resposta externa do IP é reportada separadamente, pois o runner GitHub recebeu HTTP 403 mesmo com a publicação remota concluída. Não reinicia Nginx, Docker ou a API nem altera PostgreSQL.
 
 ## Controle
 
@@ -18,6 +18,12 @@ O deployment preserva o backup do `dist` anterior; valida o SHA256, impede links
 
 ## Verificação
 
-A primeira publicação manual já foi comprovada no [run #43425858526](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43425858526). Após integrar o CD automático, exigir novo run de evento `push` com job `deploy=SUCCESS` e registro `DEPLOY FRONTEND: PASS` e `FRONTEND_PUBLIC_HTTP=200`. Se falhar, manter backup e corrigir a falha; não tratar `skipped` como sucesso.
+A primeira publicação manual já foi comprovada no [run #43425858526](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43425858526). Após integrar o CD automático, exigir novo run de evento `push` com job `deploy=SUCCESS` e registro `DEPLOY FRONTEND: PASS` e `FRONTEND_NGINX_LOCAL_HTTP=200`. Se falhar, manter backup e corrigir a falha; não tratar `skipped` como sucesso.
 
 Este mecanismo não configura HTTPS em 443, nem faz publicação da API; são operações independentes.
+
+## Evidência do primeiro push automático e correção do smoke
+
+O [run #43464755446](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43464755446) foi disparado automaticamente por `push` após [PR #9](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/pull/9) e passou em testes, build, SSH, transferência, backup e publicação remota. O log confirmou `DEPLOY FRONTEND: PASS commit=578c98c65444f8abe9faa3786f711fc0cb2095aa`. O job terminou FAILURE **somente** na sondagem externa `http://163.176.133.210/`, que retornou 403 para o runner do GitHub. Isso não demonstra que o site é acessível para todos os clientes externos, nem indica falha da cópia de `dist`.
+
+A correção substitui a exigência de resposta externa 200 por uma verificação HTTP 200 no Nginx da própria VM, via SSH autenticado, e registra o resultado externo como alerta de conectividade/política. O CD não depende de IP externo do runner para confirmar um deploy local. Uma validação adicional no navegador de um usuário externo é recomendada para investigar a resposta 403.
