@@ -24,10 +24,10 @@ jobs:
     # Apenas a main pode publicar. Push automatico exige duas flags; homologacao manual continua opt-in.
     if: >-
       github.ref == 'refs/heads/main' &&
-      vars.VM_DEPLOY_ENABLED == 'true' &&
+      vars.OCI_DEPLOY_ENABLED == 'true' &&
       (
         (github.event_name == 'workflow_dispatch' && inputs.deploy == true) ||
-        (github.event_name == 'push' && vars.VM_AUTO_DEPLOY_ENABLED == 'true')
+        (github.event_name == 'push' && vars.OCI_AUTO_DEPLOY_ENABLED == 'true')
       )
     environment: oracle-production
     runs-on: ubuntu-24.04
@@ -60,7 +60,7 @@ jobs:
       - name: Empacotar frontend
         run: tar -czf frontend.tar.gz -C dist .
 
-      - name: Configurar SSH
+      - name: Configurar SSH com fingerprint dedicada e host pinado
         env:
           SSH_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
           KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
@@ -75,7 +75,11 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-          ssh-keygen -y -f ~/.ssh/deploy_key -P '' >/dev/null
+          ssh-keygen -y -f ~/.ssh/deploy_key -P '' > ~/.ssh/deploy_key.pub
+          FINGERPRINT="$(ssh-keygen -lf ~/.ssh/deploy_key.pub -E sha256 | awk '{print $2}')"
+          [[ "$FINGERPRINT" == 'SHA256:3zV6jlZeYgt19xz4h0KrumznEr3SNlyAEiolj+XrmO8' ]] || {
+            echo '::error::Chave RSA dedicada inesperada'; exit 1;
+          }
 
       - name: Enviar build para Oracle Cloud
         env:
@@ -83,71 +87,27 @@ jobs:
           VM_USER: ${{ vars.OCI_SSH_USER }}
         run: |
           scp -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
-            -i ~/.ssh/deploy_key \
+            -o IdentityAgent=none -i ~/.ssh/deploy_key \
             frontend.tar.gz \
             "${VM_USER}@${VM_HOST}:/tmp/foodbridge-frontend-${GITHUB_SHA}.tar.gz"
 
-      - name: Publicar no Nginx
+      - name: Publicar no Nginx com rollback
         env:
-          VM_HOST: ${{ vars.VM_HOST }}
-          VM_USER: ${{ vars.VM_USER }}
+          VM_HOST: ${{ vars.OCI_SSH_HOST }}
+          VM_USER: ${{ vars.OCI_SSH_USER }}
+        shell: bash
         run: |
+          set -euo pipefail
+          test -n "$VM_HOST" && test -n "$VM_USER"
           SOMA="$(sha256sum frontend.tar.gz | awk '{print $1}')"
-          ssh -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=10 \
+          ssh -n -o IdentityAgent=none -o StrictHostKeyChecking=yes -o BatchMode=yes -o IdentitiesOnly=yes -o ConnectTimeout=15 \
             -i ~/.ssh/deploy_key \
             "${VM_USER}@${VM_HOST}" \
-            "bash -se -- '${GITHUB_SHA}' '${SOMA}'" <<'REMOTE'
-          set -Eeuo pipefail
-
-          SHA="$1"
-          SOMA_ESPERADA="$2"
-          [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo 'SHA Git invalido' >&2; exit 2; }
-          [[ "$SOMA_ESPERADA" =~ ^[0-9a-f]{64}$ ]] || { echo 'SHA256 invalido' >&2; exit 2; }
-          BASE="/opt/foodbridge/foodbridge-frontend/foodbridge-frontend"
-          TARGET="$BASE/dist"
-          ARCHIVE="/tmp/foodbridge-frontend-${SHA}.tar.gz"
-          [[ -f "$ARCHIVE" && -d "$TARGET" && -w "$BASE" ]] || { echo 'Arquivos/permisoes do frontend indisponiveis' >&2; exit 1; }
-          printf '%s  %s\n' "$SOMA_ESPERADA" "$ARCHIVE" | sha256sum -c --status
-          sudo -n nginx -t
-          STAGE="$(mktemp -d "$BASE/.dist-next.XXXXXXXX")"
-          BACKUP=""
-          MOVED=0
-          rollback() {
-            rc=$?
-            trap - ERR
-            if [[ "$MOVED" == 1 ]]; then
-              if [[ -d "$TARGET" ]]; then mv "$TARGET" "$BASE/.dist-failed-${SHA}-$(date -u +%s)" || true; fi
-              if [[ -n "$BACKUP" && -d "$BACKUP" ]]; then
-                mv "$BACKUP" "$TARGET" || echo 'ERRO CRITICO: restauracao da versao anterior falhou' >&2
-                sudo -n restorecon -RF "$TARGET" || true
-              fi
-            fi
-            [[ -z "$STAGE" || ! -d "$STAGE" ]] || rm -rf -- "$STAGE"
-            echo "Deploy frontend falhou, rollback solicitado, exit=$rc" >&2
-            exit "$rc"
-          }
-          trap rollback ERR
-          tar -xzf "$ARCHIVE" -C "$STAGE"
-          test -s "$STAGE/index.html"
-          # O artefato vem do build do CI; symlinks inesperados sao rejeitados.
-          [[ -z "$(find "$STAGE" -type l -print -quit)" ]] || { echo 'Symlink no pacote' >&2; exit 1; }
-          sudo -n restorecon -RF "$STAGE"
-          mkdir -p "$BASE/backups"
-          BACKUP="$BASE/backups/github-actions-${SHA}-$(date -u +%Y%m%dT%H%M%SZ)"
-          mv "$TARGET" "$BACKUP"
-          MOVED=1
-          mv "$STAGE" "$TARGET"
-          sudo -n restorecon -RF "$TARGET"
-          sudo -n nginx -t
-          test -s "$TARGET/index.html"
-          trap - ERR
-          rm -f -- "$ARCHIVE"
-          echo "Frontend publicado: $SHA; backup=$BACKUP"
-          REMOTE
+            "bash -se -- '${GITHUB_SHA}' '${SOMA}'" < deploy/oracle/atualizar-frontend.sh
 
       - name: Confirmar deployment
         run: echo "Deploy frontend concluido no commit ${GITHUB_SHA}"
 
       - name: Remover chave temporária
         if: always()
-        run: rm -f ~/.ssh/deploy_key
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/deploy_key.pub
