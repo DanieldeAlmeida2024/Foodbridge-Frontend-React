@@ -41,6 +41,11 @@ class DirectSshDeployment(unittest.TestCase):
                      "tarfile.open", "member.isfile()", "member.isdir()",
                      "BACKUP=", "TARGET_MOVED=1", "mv -- \"$BACKUP\" \"$TARGET\""):
             self.assertIn(item, REMOTE)
+        self.assertIn('find "$STAGE" -type d -exec chmod 0755 {} +', REMOTE)
+        self.assertIn('find "$STAGE" -type f -exec chmod 0644 {} +', REMOTE)
+        self.assertIn('find "$TARGET" -type d -exec chmod 0755 {} +', REMOTE)
+        self.assertIn("HTTP_LOCAL=", REMOTE)
+        self.assertIn("acionando rollback", REMOTE)
         self.assertNotIn("git reset --hard", REMOTE)
         self.assertNotIn("pg_restore", REMOTE)
 
