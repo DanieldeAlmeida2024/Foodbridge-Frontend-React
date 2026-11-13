@@ -6,7 +6,7 @@
 
 Ao mesclar alterações de código, assets, dependências ou workflow no branch `main`, o GitHub Actions `.github/workflows/deploy.yml` realiza automaticamente `npm ci`, testes de sessão, `lint`, build React/Vite, compactação, envio SSH com host key fixa e implantação no Nginx. Não é necessário alterar `OCI_DEPLOY_ENABLED` ou `OCI_AUTO_DEPLOY_ENABLED`: **essas variáveis não são utilizadas pelo workflow**. Alterações apenas de documentação não reiniciam o processo de publicação.
 
-O deployment preserva o backup do `dist` anterior; valida o SHA256, impede links/caminhos tar inseguros, faz `nginx -t` antes e depois da troca e confirma HTTP 200 **no Nginx local da VM por SSH**. A resposta externa do IP é reportada separadamente, pois o runner GitHub recebeu HTTP 403 mesmo com a publicação remota concluída. Não reinicia Nginx, Docker ou a API nem altera PostgreSQL.
+O deployment preserva o backup do `dist` anterior; valida o SHA256, impede links/caminhos tar inseguros, faz `nginx -t` antes e depois da troca e confirma HTTP 200 **no Nginx local da VM por SSH**. A resposta externa do IP é reportada separadamente, pois o runner GitHub recebeu HTTP 403 mesmo com a publicação remota concluída. Não reinicia o Nginx nem a API do FoodBridge e não modifica o PostgreSQL da aplicação.
 
 ## Controle
 
