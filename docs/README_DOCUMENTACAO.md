@@ -2,6 +2,10 @@
 
 > **FB-WEB-DOC-HUB-001 · 13/11/2026.** Documentação da interface baseada no React real, atualizada após a homologação do deploy automático na Oracle. A API Kotlin possui documentação própria e complementar.
 
+## Escopo da infraestrutura
+
+Esta documentação registra **somente os componentes do FoodBridge hospedados na Oracle**: site React/`dist` servido por Nginx, API Kotlin/Java, PostgreSQL específico do FoodBridge e rotinas de CI/CD, backup e saúde. Compartilhar a VM com outras aplicações **não** transforma esses serviços em dependências ou recursos do projeto. Para a topologia e o diagnóstico de rede pertinentes, veja [documentação de rede FoodBridge](https://github.com/DanieldeAlmeida2024/FoodBridge-API-Kotlin/blob/main/docs/implantacao/DIAGNOSTICO_REDE_FOODBRIDGE.md).
+
 ## Índice rápido
 
 | Finalidade | Documento | Escopo |
