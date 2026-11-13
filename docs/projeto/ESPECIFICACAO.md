@@ -37,3 +37,11 @@ CI desta branch ainda deve ser conferido. Nenhum teste em navegador real,
 deploy Nginx ou fluxo completo com a VM foi executado nesta revisão.
 Gestão de membros não-ADMIN, cobertura das telas e os 165 cenários do backend
 não são declarados completos por estes resultados.
+
+## Perfil completo — v1.2.0 (proposta)
+A rota ACCESS `/perfil` consulta e atualiza nome, e-mail e senha em `/usuarios/me`.
+Senha vazia é omitida; nome/e-mail são obrigatórios na interface. Sucesso atualiza AuthContext.
+A exclusão exige confirmação da própria pessoa, remove a conta/vínculos via API e encerra sessão;
+organizações são preservadas. Não há execução de exclusão pelo agente nesta revisão.
+Depende da correção da API [PR #12](https://github.com/DanieldeAlmeida2024/FoodBridge-API-Kotlin/pull/12).
+CI de build/lint/sessão pendente desta branch; navegador e VM ainda precisam de homologação.
