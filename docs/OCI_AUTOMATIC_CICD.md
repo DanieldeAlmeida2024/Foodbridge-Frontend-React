@@ -33,3 +33,15 @@ A correção substitui a exigência de resposta externa 200 por uma verificaçã
 O segundo [run automático #43465262108](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43465262108) também compilou, testou e publicou o build com `DEPLOY FRONTEND: PASS commit=2159b76429d178fd975bda7bc56a48522831366f`. Porém o diagnóstico via SSH detectou `Nginx local nao respondeu HTTP 200: 403`, evidenciando um problema **real de acesso aos arquivos estáticos**. A rotina anterior usava `umask 077` e `mktemp -d`, preservando permissões que podiam impedir o usuário Nginx de percorrer `dist` mesmo com SELinux correto.
 
 A correção `deploy/oracle/atualizar-frontend.sh` normaliza somente o conteúdo público do `dist` após extrair (`0755` diretórios, `0644` arquivos), mantendo a segurança do arquivo SSH e do tar temporário. Antes de emitir `DEPLOY FRONTEND: PASS`, exige `curl http://127.0.0.1/` HTTP 200; se falhar, restaura o backup e normaliza também suas permissões. Esse controle evita declarar sucesso apenas por `nginx -t` e `index.html` existir.
+
+## Homologação final do frontend — 13/11/2026
+
+A correção de permissões [PR #11](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/pull/11) passou no CI e foi mesclada. O `push` em `main` disparou automaticamente o [deploy #43465805656](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43465805656), **SUCCESS** com todos os passos aprovados. Evidências do log remoto:
+
+```text
+DEPLOY FRONTEND: PASS commit=9b9148de51a31e560b244f0c743b059a9f861edf backup=/opt/foodbridge/foodbridge-frontend/foodbridge-frontend/backups/github-actions-9b9148de51a31e560b244f0c743b059a9f861edf-20261113T164516Z HTTP_LOCAL=200
+FRONTEND_NGINX_LOCAL_HTTP=200
+FRONTEND_EXTERNAL_HTTP=200
+```
+
+**CD automático do frontend homologado por publicação real**, sem variáveis de habilitação e sem intervenção manual. O erro HTTP 403 do Nginx foi corrigido e os testes remoto e externo retornaram 200. Publicações subsequentes ocorrem em pushes de arquivos executáveis na `main`; commits somente de documentação não executam novo deploy.
