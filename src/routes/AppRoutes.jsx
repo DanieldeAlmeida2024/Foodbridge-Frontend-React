@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
+import ProtectedRoute from "./ProtectedRoute";
 import Landing from "../pages/Landing";
 import Register from "../pages/Register";
 import Login from "../pages/Login";
@@ -18,13 +19,14 @@ export default function AppRoutes() {
         <Route path="/" element={<Landing />} />
         <Route path="/cadastro" element={<Register />} />
         <Route path="/login" element={<Login />} />
-        <Route path="/organizacao" element={<OrganizationForm />} />
-        <Route path="/selecionar-organizacao" element={<SelectOrganization />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/doacoes" element={<Donations />} />
-        <Route path="/requisicoes" element={<Requests />} />
-        <Route path="/voluntarios" element={<Volunteers />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/organizacao" element={<ProtectedRoute temporary><OrganizationForm /></ProtectedRoute>} />
+        <Route path="/selecionar-organizacao" element={<ProtectedRoute temporary><SelectOrganization /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/doacoes" element={<ProtectedRoute><Donations /></ProtectedRoute>} />
+        <Route path="/requisicoes" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
+        <Route path="/voluntarios" element={<ProtectedRoute roles={["ONG"]}><Volunteers /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute roles={["ADMIN"]}><Admin /></ProtectedRoute>} />
+        <Route path="*" element={<Landing />} />
       </Routes>
     </BrowserRouter>
   );

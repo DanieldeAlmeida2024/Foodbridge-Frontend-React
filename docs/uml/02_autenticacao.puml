@@ -1,17 +1,23 @@
 @startuml
-actor Usuario
-participant "Login" as Login
-participant "AuthContext" as Auth
-database localStorage as LS
-participant "Axios client" as Axios
+actor Pessoa
+participant UI
+participant "AuthContext / sessão" as Sessao
 participant "API Kotlin" as API
-Usuario -> Login : credenciais
-Login -> API : POST /auth/login
-API --> Login : TEMP e lista de organizações
-Login -> Auth : loginTemp(data)
-Auth -> LS : set tempToken
-Usuario -> Auth : selecionar organização
-Auth -> LS : set token / remover TEMP
-Axios -> LS : read token ou tempToken
-Axios -> API : Authorization Bearer ...
+Pessoa -> UI : login
+UI -> API : POST /auth/login
+API --> UI : TEMP ou ACCESS + organizações
+UI -> Sessao : persistir contexto correspondente ao JWT
+alt TEMP
+Pessoa -> UI : selecionar organização
+UI -> API : POST /auth/select-org (TEMP)
+API --> UI : ACCESS + vínculo
+UI -> Sessao : substituir TEMP e atualizar estado
+end
+Pessoa -> UI : recarregar
+UI -> Sessao : restaurar sessão válida
+Pessoa -> UI : sair
+UI -> Sessao : remover somente chaves FoodBridge
+note over API
+Assinatura e autorização sempre validadas no servidor.
+end note
 @enduml

@@ -1,5 +1,7 @@
 import AuthLayout from "../components/layout/AuthLayout";
-import { useEffect, useState } from "react";
+import { useContext, useState } from "react";
+import { AuthContext } from "../context/AuthContext";
+import { readSession } from "../auth/session";
 import { useNavigate } from "react-router-dom";
 import api from "../api/client";
 
@@ -9,44 +11,6 @@ type Org = {
   role: string;
   status: string;
 };
-
-type StoredUser = {
-  id?: number;
-  usuarioId?: number;
-  userId?: number;
-  tempToken?: string;
-  organizacoes?: Org[];
-};
-
-type JwtClaims = {
-  id?: number | string;
-  usuarioId?: number | string;
-  userId?: number | string;
-  sub?: number | string;
-};
-
-function decodeJwtPayload(token?: string | null): JwtClaims {
-  if (!token) return {};
-
-  try {
-    const payload = token.split(".")[1];
-    if (!payload) return {};
-
-    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
-    return JSON.parse(atob(normalized));
-  } catch {
-    return {};
-  }
-}
-
-function getUsuarioId(user: StoredUser, tempToken?: string | null) {
-  const claims = decodeJwtPayload(tempToken || user.tempToken);
-  return user.usuarioId || user.id || user.userId || claims.usuarioId || claims.userId || claims.id || claims.sub;
-}
-
-function isValidToken(token?: string | null) {
-  return !!token && token !== "null" && token !== "undefined";
-}
 
 function getErrorMessage(err: unknown) {
   const apiError = err as { response?: { data?: { error?: string; mensagem?: string; message?: string } } };
@@ -58,15 +22,12 @@ function getErrorMessage(err: unknown) {
 
 export default function SelectOrganization() {
   const navigate = useNavigate();
+  const auth = useContext(AuthContext);
 
-  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [orgs] = useState<Org[]>(() => readSession(localStorage).user?.organizacoes || []);
   const [selecting, setSelecting] = useState<number | null>(null);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const user: StoredUser = JSON.parse(localStorage.getItem("user") || "{}");
-    setOrgs(user.organizacoes || []);
-  }, []);
 
   function getStatusColor(status: string) {
     if (status === "VERIFICADO") return "bg-green-100 text-green-700";
@@ -86,11 +47,11 @@ export default function SelectOrganization() {
       setSelecting(orgId);
       setError("");
 
-      const tempToken = localStorage.getItem("tempToken");
-      const user: StoredUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const usuarioId = getUsuarioId(user, tempToken);
+      const session = readSession(localStorage);
+      const tempToken = session.user?.tempToken;
+      const usuarioId = session.claims?.sub;
 
-      if (!isValidToken(tempToken)) {
+      if (!tempToken || !auth) {
         throw new Error("Sessao temporaria invalida. Faca login novamente.");
       }
 
@@ -108,18 +69,7 @@ export default function SelectOrganization() {
         }
       );
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("usuarioId", String(data.usuarioId || usuarioId));
-      localStorage.setItem("vinculoId", String(data.vinculoId || ""));
-
-      const selectedOrg = orgs.find((org) => org.organizacaoId === orgId);
-      if (selectedOrg) {
-        localStorage.setItem("selectedOrganization", JSON.stringify(selectedOrg));
-        localStorage.setItem("role", data.role || selectedOrg.role);
-        localStorage.setItem("organizacaoId", String(data.organizacaoId || selectedOrg.organizacaoId));
-      }
-
-      localStorage.removeItem("tempToken");
+      auth.loginFinal(data);
       navigate("/dashboard");
     } catch (err: unknown) {
       setError(getErrorMessage(err));
