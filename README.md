@@ -1,132 +1,54 @@
-# Foodbridge-Frontend-React
+# FoodBridge — frontend React
 
-Aplicação web da plataforma FoodBridge, incluindo cadastro, autenticação e organização das doações.
+[![CI Web](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/workflows/ci.yml/badge.svg)](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/workflows/ci.yml)
+[![Deploy Oracle](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/workflows/deploy.yml/badge.svg)](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/workflows/deploy.yml)
 
-## Início rápido
-**Stack:** React, Vite, TypeScript, JavaScript. Os passos abaixo dependem da configuração apropriada do ambiente e de serviços externos.
+Interface web do FoodBridge, plataforma de redistribuição de alimentos entre organizações doadoras e ONGs. Este projeto apresenta formulários, navegação por papel, doações, solicitações, voluntários, indicadores e administração. O servidor é a [API Kotlin/Spring Boot](https://github.com/DanieldeAlmeida2024/FoodBridge-API-Kotlin).
+
+**Stack:** React 19 · TypeScript 6 + JavaScript/JSX · Vite 8 · React Router 7 · Axios · Tailwind CSS 3 · ESLint 9.
+
+## Recursos implementados
+
+- Dez rotas nominais, incluindo landing, cadastro, login, organização, seleção de contexto, dashboard, doações, requisições, voluntários (ONG) e administração (ADMIN).
+- Sessão JWT com transição TEMP → ACCESS, `AuthContext`, guards de navegação e interceptor Axios.
+- Formulários de doação e voluntário, filtros de alimentos, consulta de CEP com ViaCEP, indicadores públicos e aprovações institucionais.
+- Teste automatizado de sessão, lint e build de produção.
+- **Deploy automático do site na Oracle** após push de código na `main`; envio SSH com host key pinada, backup do `dist`, rollback e validação HTTP 200 do Nginx.
+
+**Deploy automático real:** [run #43465805656 — SUCCESS](https://github.com/DanieldeAlmeida2024/Foodbridge-Frontend-React/actions/runs/43465805656), com Nginx local e externo HTTP 200. [Deploy automático da API](https://github.com/DanieldeAlmeida2024/FoodBridge-API-Kotlin/actions/runs/43465999269) também homologado.
+
+## Documentação e portfólio
+
+**[Central de documentação](docs/README_DOCUMENTACAO.md)** · [Inventário completo do repositório](docs/INVENTARIO_PROJETO.md) · [Telas e operações](docs/RECURSOS_E_TELAS.md) · [Arquitetura React + Mermaid](docs/ARQUITETURA_FRONTEND_ATUAL.md) · [Guia de estudo](docs/GUIA_ESTUDO.md) · [Apresentação](docs/APRESENTACAO_FRONTEND.md).
+
+Outras referências: [contratos HTTP e exemplos](API_DOCUMENTATION.md), [UML editável](docs/uml/README.md), [plano de testes](docs/testes/PLANO_DE_TESTES.md), [CI/CD e rollback](docs/OCI_AUTOMATIC_CICD.md), [documentação do produto completo](https://github.com/DanieldeAlmeida2024/FoodBridge-API-Kotlin/blob/main/docs/README_DOCUMENTACAO.md).
+
+## Rodar em desenvolvimento
+
+Requer Node.js 24 compatível com a configuração de CI. Com uma API de desenvolvimento acessível:
 
 ```bash
-npm ci && npm run dev
-```
-
-**Verificação inicial:** `npm run build`. Não interpretar esse comando como evidência de testes aprovados antes de executá-lo.
-
-## Principais diretórios/arquivos
-- `package.json`
-- `src/pages`
-- `src/context`
-- `src/api`
-- `API_DOCUMENTATION.md`
-- `.github/workflows/deploy.yml`
-
-## Limitações
-A implantação Oracle Cloud exige secrets e infraestrutura; os dois deploys observados em outubro de 2026 falharam. O motivo não foi identificado apenas pela conclusão dos runs.
-
-## Documentação técnica
-- [Requisitos](docs/REQUISITOS.md)
-- [Arquitetura](docs/ARQUITETURA.md)
-- [UML](docs/UML.puml)
-- [Plano de testes](docs/PLANO_TESTES.md)
-- [Guia para IA](AGENTS.md)
-
----
-
-## README anterior preservado
-
-# React + TypeScript + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-## Documentação técnica versionada
-
-- [Especificação e análise de domínio](docs/projeto/ESPECIFICACAO.md)
-- [Diagramas UML editáveis](docs/uml/README.md)
-- [Plano de testes](docs/testes/PLANO_DE_TESTES.md)
-- [Controle de versões](docs/controle/VERSIONAMENTO.md)
-
-## Validação funcional da sessão
-```sh
 npm ci
+npm run dev
 npm run test:session
 npm run lint
 npm run build
+npm run preview
 ```
-A URL da API pode ser configurada com `VITE_API_BASE_URL`; o padrão usa o mesmo origin.
-CI executa em PRs e pushes na main, com teste de sessão, lint e build. Publicação direta
-via **SSH do GitHub Actions para a Oracle** exige as credenciais do environment
-`oracle-production` neste repositório e a variável de repositório
-`OCI_DEPLOY_ENABLED=true`. No primeiro deploy, execute o workflow manual
-`deploy.yml` com `deploy=true`; para publicar automaticamente em cada push
-aprovado à main, habilite também `OCI_AUTO_DEPLOY_ENABLED=true` após homologação.
-O backend usa outro repositório e secrets próprios. [Runbook do CI/CD por SSH](docs/CI_CD_ORACLE_SSH_DIRETO.md).
-[Casos e limites dos testes](docs/testes/SESSAO_E_INTEGRACAO.md).
+
+O cliente Axios lê `VITE_API_BASE_URL` ou usa a mesma origem por padrão; o cadastro `Register.tsx` ainda usa `fetch("/usuarios")` relativo. Configure URL/proxy local de forma coerente. **Nunca direcionar testes de cadastro para o PostgreSQL de produção**.
+
+Ao alterar a árvore do projeto:
+
+```bash
+python3 tools/atualizar_inventario.py --write
+python3 tools/atualizar_inventario.py --check
+```
+
+O CI verifica que o inventário MD contém todos os arquivos rastreados.
+
+## Limites e evolução
+
+A proteção das rotas no frontend melhora a UX, mas autorização real é responsabilidade da API. JWT permanece no localStorage; revisar risco XSS e sessão segura. TLS, testes de navegador E2E e acessibilidade abrangentes são frentes de evolução, não itens já certificados. Para distinguir implementação de homologação, veja [recursos e telas](docs/RECURSOS_E_TELAS.md).
+
+**Colaboração:** [AGENTS.md](AGENTS.md) e [versionamento documental](docs/controle/VERSIONAMENTO.md).
